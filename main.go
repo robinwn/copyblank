@@ -11,20 +11,12 @@ import (
 func main() {
 	// check if dummy file path and directory prefix are provided as arguments
 	if len(os.Args) < 3 {
-		fmt.Fprintln(os.Stderr, "Usage: go run main.go dummy_file_path directory_prefix")
+		fmt.Fprintln(os.Stderr, "Usage: copyblank ./blanks/blank.ext dir/prefix")
 		os.Exit(1)
 	}
 
 	dummyFilePath := os.Args[1]
 	directoryPrefix := os.Args[2]
-
-	// open the dummy file
-	dummyFile, err := os.Open(dummyFilePath)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "Error opening dummy file:", err)
-		os.Exit(1)
-	}
-	defer dummyFile.Close()
 
 	// read file names from stdin
 	scanner := bufio.NewScanner(os.Stdin)
@@ -33,6 +25,13 @@ func main() {
 
 		// construct the full file path using the directory prefix
 		fullPath := filepath.Join(directoryPrefix, fileName)
+
+		// open the dummy file
+		dummyFile, err := os.Open(dummyFilePath)
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Error opening dummy file:", err)
+			os.Exit(1)
+		}
 
 		// open the file
 		file, err := os.Create(fullPath)
@@ -47,13 +46,16 @@ func main() {
 			fmt.Fprintln(os.Stderr, "Error copying file contents:", err)
 			continue
 		}
+		dummyFile.Close()
 
-		// set the permissions of the new file to match the original file
-		fileInfo, err := os.Stat(dummyFilePath)
+		// get the file info of the destination directory
+		fileInfo, err := os.Stat(filepath.Dir(fullPath))
 		if err != nil {
-			fmt.Fprintln(os.Stderr, "Error getting file info:", err)
+			fmt.Fprintln(os.Stderr, "Error getting directory info:", err)
 			continue
 		}
+
+		// set the permissions of the new file to match the directory
 		err = os.Chmod(fullPath, fileInfo.Mode())
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Error setting file permissions:", err)
@@ -65,11 +67,5 @@ func main() {
 
 	if err := scanner.Err(); err != nil {
 		fmt.Fprintln(os.Stderr, "Error reading from stdin:", err)
-	}
-
-	// reset dummy file offset to the beginning
-	if _, err := dummyFile.Seek(0, io.SeekStart); err != nil {
-		fmt.Fprintln(os.Stderr, "Error resetting dummy file offset:", err)
-		os.Exit(1)
 	}
 }
